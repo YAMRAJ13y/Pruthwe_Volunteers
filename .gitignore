@@ -47,3 +47,39 @@ vite.config.ts.timestamp-*
 # Cache
 .cache/
 .eslintcache
+
+# Misc / unnecessary project files
+tree.txt
+*.txt
+*.bak
+*.tmp
+*.temp
+*.orig
+*.swp
+*~
+
+# Coverage reports
+coverage/
+*.lcov
+.nyc_output/
+
+# Testing
+test-results/
+playwright-report/
+cypress/videos/
+cypress/screenshots/
+
+# Package manager locks (optional - remove if you want to keep lock files)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Storybook
+storybook-static/
+
+# Turbo
+.turbo/
+
+# Vercel / Netlify / deployment
+.vercel/
+.netlify/
