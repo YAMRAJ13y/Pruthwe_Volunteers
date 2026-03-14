@@ -70,8 +70,6 @@ export default function Navbar() {
 
   const mobileDiscover    = [{ label:'Events',to:'/events'},{ label:'Gallery',to:'/gallery'},{ label:'News',to:'/news'}];
   const mobileOrganisation= [{ label:'About',to:'/about'},{ label:'Partners',to:'/partners'},{ label:'Contact',to:'/contact'}];
-  const mobileJoin: Array<{label:string;to:string}> = [];
-
   const volunteerMenu = [
     { label:'My Dashboard',  to:'/dashboard',              desc:'Overview and progress',     icon:LayoutDashboard },
     { label:'Assignments',   to:'/dashboard/assignments',  desc:'Upcoming allocations',      icon:ClipboardList },
@@ -137,7 +135,7 @@ export default function Navbar() {
               <img
                 src="/logo.png"
                 alt="Pruthwee Volunteers"
-                className="h-40 md:h-48 w-auto object-contain group-hover:scale-105 transition-transform duration-200"
+                className="h-10 md:h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-200"
               />
             </Link>
 

@@ -1,6 +1,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react';
 
 // ── GLOBAL LIGHTNING ──────────────────────────
 type LPt   = { x: number; y: number };
@@ -127,41 +127,41 @@ import EventRegistrationModal from './components/layout/auth/EventRegistrationMo
 import RegisterModal from './components/layout/auth/RegisterModal';
 
 // ── PUBLIC PAGES ─────────────────────────────
-import HomePage          from './pages/HomePage';
-import ForVolunteersPage from './pages/ForVolunteersPage';
-import ForOrganisersPage from './pages/ForOrganisersPage';
-import EventsPage        from './pages/EventsPage';
-import EventDetailPage   from './pages/EventDetailPage';
-import Summit2026Page    from './pages/Summit2026Page';
-import GalleryPage       from './pages/GalleryPage';
-import PartnersPage      from './pages/PartnersPage';
-import AboutPage         from './pages/AboutPage';
-import ContactPage       from './pages/ContactPage';
-import NewsPage          from './pages/NewsPage';
-import NewsArticlePage   from './pages/NewsArticlePage';
-import NewsletterPage    from './pages/NewsletterPage';
-import NotFoundPage      from './pages/NotFoundPage';
-import GuidebookPage     from './pages/GuidebookPage';
+const HomePage          = lazy(() => import('./pages/HomePage'));
+const ForVolunteersPage = lazy(() => import('./pages/ForVolunteersPage'));
+const ForOrganisersPage = lazy(() => import('./pages/ForOrganisersPage'));
+const EventsPage        = lazy(() => import('./pages/EventsPage'));
+const EventDetailPage   = lazy(() => import('./pages/EventDetailPage'));
+const Summit2026Page    = lazy(() => import('./pages/Summit2026Page'));
+const GalleryPage       = lazy(() => import('./pages/GalleryPage'));
+const PartnersPage      = lazy(() => import('./pages/PartnersPage'));
+const AboutPage         = lazy(() => import('./pages/AboutPage'));
+const ContactPage       = lazy(() => import('./pages/ContactPage'));
+const NewsPage          = lazy(() => import('./pages/NewsPage'));
+const NewsArticlePage   = lazy(() => import('./pages/NewsArticlePage'));
+const NewsletterPage    = lazy(() => import('./pages/NewsletterPage'));
+const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
+const GuidebookPage     = lazy(() => import('./pages/GuidebookPage'));
 
 // ── VOLUNTEER PORTAL ─────────────────────────
-import DashboardPage    from './pages/volunteer/DashboardPage';
-import AssignmentsPage  from './pages/volunteer/AssignmentsPage';
-import CertificatesPage from './pages/volunteer/CertificatesPage';
-import ProfilePage      from './pages/volunteer/ProfilePage';
-import GroupsPage       from './pages/volunteer/GroupsPage';
+const DashboardPage    = lazy(() => import('./pages/volunteer/DashboardPage'));
+const AssignmentsPage  = lazy(() => import('./pages/volunteer/AssignmentsPage'));
+const CertificatesPage = lazy(() => import('./pages/volunteer/CertificatesPage'));
+const ProfilePage      = lazy(() => import('./pages/volunteer/ProfilePage'));
+const GroupsPage       = lazy(() => import('./pages/volunteer/GroupsPage'));
 
 // ── ORGANISER PORTAL ─────────────────────────
-import OrgDashboardPage   from './pages/organiser/OrgDashboardPage';
-import CreateEventPage    from './pages/organiser/CreateEventPage';
-import SectorManagerPage  from './pages/organiser/SectorManagerPage';
-import RegistrationsPage  from './pages/organiser/RegistrationsPage';
-import AllocationToolPage from './pages/organiser/AllocationToolPage';
-import MessagesPage       from './pages/organiser/MessagesPage';
-import EventClosePage     from './pages/organiser/EventClosePage';
-import GroupsManagerPage  from './pages/organiser/GroupsManagerPage';
+const OrgDashboardPage   = lazy(() => import('./pages/organiser/OrgDashboardPage'));
+const CreateEventPage    = lazy(() => import('./pages/organiser/CreateEventPage'));
+const SectorManagerPage  = lazy(() => import('./pages/organiser/SectorManagerPage'));
+const RegistrationsPage  = lazy(() => import('./pages/organiser/RegistrationsPage'));
+const AllocationToolPage = lazy(() => import('./pages/organiser/AllocationToolPage'));
+const MessagesPage       = lazy(() => import('./pages/organiser/MessagesPage'));
+const EventClosePage     = lazy(() => import('./pages/organiser/EventClosePage'));
+const GroupsManagerPage  = lazy(() => import('./pages/organiser/GroupsManagerPage'));
 
 // ── ADMIN ─────────────────────────────────────
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 
 // ── SCROLL TO TOP ─────────────────────────────
 function ScrollToTop() {
@@ -229,6 +229,11 @@ export default function App() {
 
       <ScrollToTop />
 
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#0C0C0C]">
+          <div className="w-8 h-8 border-2 border-[#CCFF00] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
       <Routes>
 
           {/* ── PUBLIC ── */}
@@ -299,6 +304,7 @@ export default function App() {
           <Route path="*" element={<WithLayout><NotFoundPage /></WithLayout>} />
 
       </Routes>
+      </Suspense>
     </>
   );
 }
