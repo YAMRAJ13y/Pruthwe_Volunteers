@@ -1,9 +1,174 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useInView, useAnimation, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useInView, useAnimation, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import { ArrowRight, ChevronDown, Play, MapPin, Calendar, Users } from 'lucide-react';
 import { openRegisterModal } from '../components/layout/Navbar';
 import { PLATFORM_STATS, EVENT_CATEGORIES, STATUS_TIERS } from '../constants';
+
+// ─────────────────────────────────────────────
+//  THUNDER INTRO OVERLAY
+// ─────────────────────────────────────────────
+type TBolt = { pts: { x: number; y: number }[]; branches: { x: number; y: number }[][]; born: number; life: number };
+
+function mkBolt(
+  x1: number, y1: number, x2: number, y2: number, disp: number, depth: number
+): { x: number; y: number }[] {
+  if (depth === 0 || disp < 1.5) return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+  const mx = (x1 + x2) / 2 + (Math.random() - 0.5) * disp;
+  const my = (y1 + y2) / 2 + (Math.random() - 0.5) * disp;
+  return [...mkBolt(x1, y1, mx, my, disp / 1.7, depth - 1), ...mkBolt(mx, my, x2, y2, disp / 1.7, depth - 1).slice(1)];
+}
+
+function ThunderIntro({ onDone }: { onDone: () => void }) {
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const frameRef   = useRef<number | null>(null);
+  const boltsRef   = useRef<TBolt[]>([]);
+  const startRef   = useRef(Date.now());
+  const [fade, setFade] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const ctx    = canvas.getContext('2d')!;
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // schedule bolt waves: light burst then taper off quickly
+    const schedule: { at: number; count: number }[] = [
+      { at:  60, count: 2 },
+      { at: 180, count: 3 },
+      { at: 320, count: 2 },
+      { at: 460, count: 2 },
+      { at: 580, count: 1 },
+    ];
+    let schedIdx = 0;
+
+    const spawnWave = (count: number) => {
+      const now = Date.now();
+      const W   = canvas.width;
+      const H   = canvas.height;
+      for (let i = 0; i < count; i++) {
+        // start from random top-edge point, strike toward bottom area
+        const sx = Math.random() * W;
+        const sy = Math.random() * H * 0.25;
+        const ex = sx + (Math.random() - 0.5) * W * 0.6;
+        const ey = H * 0.4 + Math.random() * H * 0.55;
+        const pts = mkBolt(sx, sy, ex, ey, 60, 6);
+        const branches: TBolt['branches'] = Array.from({ length: 1 + Math.floor(Math.random() * 2) }, () => {
+          const si  = Math.floor(pts.length * (0.15 + Math.random() * 0.55));
+          const sp  = pts[si] ?? pts[0];
+          const len = 50 + Math.random() * 120;
+          const ang = Math.random() * Math.PI * 2;
+          return mkBolt(sp.x, sp.y, sp.x + Math.cos(ang) * len, sp.y + Math.sin(ang) * len, 28, 4);
+        });
+        boltsRef.current.push({ pts, branches, born: now, life: 120 + Math.random() * 120 });
+      }
+    };
+
+    const draw = () => {
+      const elapsed = Date.now() - startRef.current;
+      const now     = Date.now();
+
+      // fire scheduled waves
+      while (schedIdx < schedule.length && elapsed >= schedule[schedIdx].at) {
+        spawnWave(schedule[schedIdx].count);
+        schedIdx++;
+      }
+
+      // screen flash on new wave spawns — brief white/lime tint
+      const flashAmt = boltsRef.current.some(b => now - b.born < 60) ? 0.02 + Math.random() * 0.02 : 0;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // dark background (ink black)
+      ctx.fillStyle = `rgba(12,12,12,${0.94 - flashAmt})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // subtle lime flash overlay
+      if (flashAmt > 0) {
+        ctx.fillStyle = `rgba(204,255,0,${flashAmt})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      boltsRef.current = boltsRef.current.filter(b => now - b.born < b.life + 80);
+
+      for (const bolt of boltsRef.current) {
+        const t      = Math.min(1, (now - bolt.born) / bolt.life);
+        const alpha  = Math.max(0, 1 - t) * (0.6 + Math.random() * 0.4);
+
+        const seg = (pts: { x: number; y: number }[], lw: number, color: string, blur: number) => {
+          if (pts.length < 2) return;
+          ctx.save();
+          ctx.globalAlpha  = alpha;
+          ctx.lineWidth    = lw;
+          ctx.strokeStyle  = color;
+          ctx.shadowBlur   = blur;
+          ctx.shadowColor  = '#CCFF00';
+          ctx.lineCap      = 'round';
+          ctx.lineJoin     = 'round';
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+          ctx.restore();
+        };
+
+        seg(bolt.pts, 4,   'rgba(204,255,0,0.12)', 20);
+        seg(bolt.pts, 2,   'rgba(180,255,60,0.55)', 8);
+        seg(bolt.pts, 0.8, 'rgba(255,255,255,0.85)', 2);
+        for (const br of bolt.branches) {
+          seg(br, 2.5, 'rgba(204,255,0,0.10)', 14);
+          seg(br, 1.2, 'rgba(180,255,80,0.50)', 6);
+          seg(br, 0.6, 'rgba(255,255,255,0.75)',  1);
+        }
+      }
+
+      // after all waves done + bolts cleared => start fade out
+      if (schedIdx >= schedule.length && boltsRef.current.length === 0 && !fade) {
+        setFade(true);
+      }
+      frameRef.current = requestAnimationFrame(draw);
+    };
+
+    frameRef.current = requestAnimationFrame(draw);
+    return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <AnimatePresence onExitComplete={onDone}>
+      {!fade && (
+        <motion.div
+          key="thunder-intro"
+          className="fixed inset-0 z-[10000] overflow-hidden"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.7, ease: 'easeInOut' } }}
+        >
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          {/* Pruthwee wordmark fades in mid-storm */}
+          <motion.div
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            <p className="font-mono text-[#CCFF00] text-xs tracking-[4px] uppercase mb-3">Welcome to</p>
+            <h1
+              className="font-black uppercase leading-none tracking-tight"
+              style={{
+                fontFamily: "'Syne', sans-serif",
+                fontSize: 'clamp(42px, 8vw, 96px)',
+                background: 'linear-gradient(90deg, #E4FF80, #CCFF00)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              PRUTHWEE
+            </h1>
+            <p className="font-mono text-[#888] text-sm tracking-[6px] uppercase mt-2">Volunteers</p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 // ─────────────────────────────────────────────
 //  SCROLL REVEAL HOOK
@@ -115,8 +280,11 @@ function seatColor(seats: number) {
 //  HOME PAGE
 // ═════════════════════════════════════════════
 export default function HomePage() {
+  const [introActive, setIntroActive] = useState(true);
+
   return (
-    <div className="landing-root-bg overflow-x-hidden">
+    <div className="landing-root-bg overflow-x-hidden ink-fonts">
+      {introActive && <ThunderIntro onDone={() => setIntroActive(false)} />}
 
       {/* ══════════════════════════════════════
           1. TRIBAL BANNER (top)
@@ -207,10 +375,17 @@ export default function HomePage() {
 // ─────────────────────────────────────────────
 function HeroSection() {
   type Sparkle = { id: number; x: number; y: number; size: number; createdAt: number };
+  type LightningPt   = { x: number; y: number };
+  type LightningBolt = { id: number; pts: LightningPt[]; branches: LightningPt[][]; createdAt: number; duration: number };
 
   const heroRef = useRef<HTMLElement>(null);
   const sparkleIdRef = useRef(0);
   const lastSparkleAtRef = useRef(0);
+  const canvasRef          = useRef<HTMLCanvasElement>(null);
+  const lightningRef       = useRef<LightningBolt[]>([]);
+  const lightningIdRef     = useRef(0);
+  const lastLightningAtRef = useRef(0);
+  const lFrameRef          = useRef<number | null>(null);
   const [sparkles, setSparkles] = useState<Sparkle[]>([]);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [heroSize, setHeroSize] = useState({ width: 0, height: 0 });
@@ -306,6 +481,106 @@ function HeroSection() {
     return () => observer.disconnect();
   }, []);
 
+  // ── canvas size sync ──────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const sync = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, []);
+
+  // ── lightning render loop ─────────────────────
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = () => {
+      const now = Date.now();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      lightningRef.current = lightningRef.current.filter(b => now - b.createdAt < b.duration + 60);
+
+      for (const bolt of lightningRef.current) {
+        const t       = Math.min(1, (now - bolt.createdAt) / bolt.duration);
+        const base    = Math.max(0, 1 - t);
+        const flicker = base * (0.5 + Math.random() * 0.5);
+
+        const seg = (pts: LightningPt[], lw: number, color: string, blur: number) => {
+          if (pts.length < 2) return;
+          ctx.save();
+          ctx.globalAlpha  = flicker;
+          ctx.lineWidth    = lw;
+          ctx.strokeStyle  = color;
+          ctx.shadowBlur   = blur;
+          ctx.shadowColor  = '#CCFF00';
+          ctx.lineCap      = 'round';
+          ctx.lineJoin     = 'round';
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+          ctx.restore();
+        };
+
+        // main bolt — outer glow → mid → white core
+        seg(bolt.pts, 6,   'rgba(204,255,0,0.28)',   32);
+        seg(bolt.pts, 2.5, 'rgba(180,255,60,0.75)',  10);
+        seg(bolt.pts, 0.8, 'rgba(255,255,255,0.95)',  3);
+
+        // branches
+        for (const br of bolt.branches) {
+          seg(br, 3.5, 'rgba(204,255,0,0.22)', 20);
+          seg(br, 1.5, 'rgba(180,255,80,0.65)',  7);
+          seg(br, 0.5, 'rgba(255,255,255,0.85)', 0);
+        }
+      }
+      lFrameRef.current = requestAnimationFrame(draw);
+    };
+
+    lFrameRef.current = requestAnimationFrame(draw);
+    return () => { if (lFrameRef.current) cancelAnimationFrame(lFrameRef.current); };
+  }, [prefersReducedMotion]);
+
+  // ── lightning bolt generation ─────────────────
+  function generateBoltPts(x1: number, y1: number, x2: number, y2: number, disp: number, depth: number): LightningPt[] {
+    if (depth === 0 || disp < 2) return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+    const mx = (x1 + x2) / 2 + (Math.random() - 0.5) * disp;
+    const my = (y1 + y2) / 2 + (Math.random() - 0.5) * disp;
+    return [...generateBoltPts(x1, y1, mx, my, disp / 1.8, depth - 1), ...generateBoltPts(mx, my, x2, y2, disp / 1.8, depth - 1).slice(1)];
+  }
+
+  function spawnLightning(cx: number, cy: number) {
+    const now = Date.now();
+    if (now - lastLightningAtRef.current < 130 + Math.random() * 90) return;
+    lastLightningAtRef.current = now;
+
+    const angle  = Math.random() * Math.PI * 2;
+    const length = 100 + Math.random() * 220;
+    const ex = cx + Math.cos(angle) * length;
+    const ey = cy + Math.sin(angle) * length;
+    const pts = generateBoltPts(cx, cy, ex, ey, 58, 6);
+
+    const branches: LightningPt[][] = [];
+    const count = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const si = Math.floor(pts.length * (0.2 + Math.random() * 0.5));
+      const sp = pts[si] ?? pts[0];
+      const ba = angle + (Math.random() - 0.5) * 1.4;
+      const bl = length * (0.2 + Math.random() * 0.32);
+      branches.push(generateBoltPts(sp.x, sp.y, sp.x + Math.cos(ba) * bl, sp.y + Math.sin(ba) * bl, 30, 4));
+    }
+
+    lightningRef.current = [
+      ...lightningRef.current.slice(-5),
+      { id: lightningIdRef.current++, pts, branches, createdAt: now, duration: 180 + Math.random() * 160 },
+    ];
+  }
+
   const cursorLinks = useMemo(() => {
     if (!cursorPos || !heroSize.width || !heroSize.height) return [];
 
@@ -359,6 +634,7 @@ function HeroSection() {
       setHeroTilt({ x: move.nx * 4.8, y: -move.ny * 4.2 });
       if (!prefersReducedMotion) {
         createSparkle(move.x, move.y);
+        spawnLightning(move.x, move.y);
       }
     });
   }
@@ -398,6 +674,18 @@ function HeroSection() {
       onMouseLeave={() => {
         setCursorPos(null);
         setHeroTilt({ x: 0, y: 0 });
+      }}
+      onClick={(e) => {
+        if (prefersReducedMotion) return;
+        const bounds = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - bounds.left;
+        const y = e.clientY - bounds.top;
+        // burst: spawn 3 bolts in quick succession from the click point
+        spawnLightning(x, y);
+        lastLightningAtRef.current = 0;
+        spawnLightning(x, y);
+        lastLightningAtRef.current = 0;
+        spawnLightning(x, y);
       }}
       className="relative min-h-[92vh] flex flex-col items-center justify-center overflow-hidden"
     >
@@ -463,7 +751,7 @@ function HeroSection() {
                     y1={point.y}
                     x2={next.x}
                     y2={next.y}
-                    stroke="rgba(167,235,242,0.35)"
+                    stroke="rgba(204,255,0,0.35)"
                     strokeWidth="0.22"
                     className="hero-constellation-line"
                   />
@@ -475,7 +763,7 @@ function HeroSection() {
                   cx={point.x}
                   cy={point.y}
                   r="0.58"
-                  fill="rgba(167,235,242,0.95)"
+                  fill="rgba(204,255,0,0.95)"
                   className="hero-constellation-dot"
                 />
               ))}
@@ -501,10 +789,42 @@ function HeroSection() {
         </svg>
       )}
 
+      {/* Cursor spotlight glow */}
+      {cursorPos && !prefersReducedMotion && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute hero-cursor-spotlight"
+          style={{
+            left: cursorPos.x,
+            top:  cursorPos.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          {/* outer soft glow */}
+          <div className="hero-cursor-glow-outer" />
+          {/* inner bright core */}
+          <div className="hero-cursor-glow-inner" />
+          {/* ripple rings */}
+          <div className="hero-cursor-ring hero-cursor-ring--1" />
+          <div className="hero-cursor-ring hero-cursor-ring--2" />
+          <div className="hero-cursor-ring hero-cursor-ring--3" />
+        </div>
+      )}
+
       {/* Background layers */}
       <motion.div style={{ y: bgY }} className="absolute inset-0 brand-hero-gradient" />
       <motion.div style={{ y: bgY }} className="absolute inset-0 grid-overlay opacity-60" />
       <motion.div style={{ opacity: glowOpacity }} className="absolute inset-0 radial-glow" />
+
+      {/* Lightning canvas */}
+      {!prefersReducedMotion && (
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          style={{ zIndex: 4 }}
+        />
+      )}
 
       {!prefersReducedMotion && <div className="absolute inset-0 pointer-events-none">
         {sparkles.map((sparkle) => (
@@ -524,18 +844,18 @@ function HeroSection() {
       {/* Decorative blobs */}
       {!prefersReducedMotion && <motion.div
         style={{ y: useTransform(scrollYProgress, [0, 1], [0, 90]) }}
-        className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#54ACBF]/5 rounded-full blur-3xl pointer-events-none"
+        className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#CCFF00]/5 rounded-full blur-3xl pointer-events-none"
       />}
       {!prefersReducedMotion && <motion.div
         style={{ y: useTransform(scrollYProgress, [0, 1], [0, -70]) }}
-        className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#26658C]/10 rounded-full blur-3xl pointer-events-none"
+        className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#222200]/10 rounded-full blur-3xl pointer-events-none"
       />}
 
       <div className="absolute inset-0 pointer-events-none">
         {particles.map((particle) => (
           <motion.span
             key={particle.id}
-            className="absolute w-1.5 h-1.5 rounded-full bg-[#54ACBF]/70"
+            className="absolute w-1.5 h-1.5 rounded-full bg-[#CCFF00]/70"
             style={{ left: particle.left, top: particle.top }}
             animate={{ y: [0, -18, 0], opacity: [0.2, 0.9, 0.2], scale: [0.8, 1.15, 0.8] }}
             transition={{ duration: particle.duration, repeat: Infinity, ease: 'easeInOut', delay: particle.delay }}
@@ -552,24 +872,24 @@ function HeroSection() {
           initial={{ opacity: 0, y: showWarpIntro ? -40 : -14, scale: showWarpIntro ? 1.06 : 1 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: showWarpIntro ? 0.9 : 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[rgba(84,172,191,0.28)] bg-[rgba(84,172,191,0.08)] mb-7"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[rgba(204,255,0,0.28)] bg-[rgba(255,255,255,0.05)] mb-7"
         >
           <span className="w-2 h-2 rounded-full bg-[#6EE07A] animate-pulse" />
-          <span className="font-mono text-[#A7EBF2] text-xs tracking-[2px] uppercase">
+          <span className="font-mono text-[#CCFF00] text-xs tracking-[2px] uppercase">
             Live now in 48 cities
           </span>
         </motion.div>
 
-        {/* Headline — Barlow Condensed, massive */}
+        {/* Headline — Syne, massive */}
         <motion.h1
           initial={{ opacity: 0, y: showWarpIntro ? 56 : 32, scale: showWarpIntro ? 1.08 : 1 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: showWarpIntro ? 1.05 : 0.7, delay: 0.1 }}
-          className="font-display font-black text-[#F0FAFB] uppercase leading-none tracking-wide mb-4"
-          style={{ fontSize: 'clamp(56px, 10vw, 120px)' }}
+          className="font-hero-display font-black text-[#F2F2F2] uppercase leading-none tracking-wide mb-4"
+          style={{ fontSize: 'clamp(38px, 6.5vw, 80px)' }}
         >
           Pruthwe{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#54ACBF] to-[#A7EBF2] hero-shimmer-text">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#CCFF00] to-[#BBEE00] hero-shimmer-text">
             Volunteers
           </span>
         </motion.h1>
@@ -578,7 +898,7 @@ function HeroSection() {
           initial={{ opacity: 0, y: showWarpIntro ? 40 : 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: showWarpIntro ? 0.9 : 0.6, delay: 0.25 }}
-          className="font-sans text-[#8BBFCC] text-lg md:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
+          className="font-sans text-[#888888] text-lg md:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
         >
           Join India's largest volunteer movement — 12,000+ changemakers across 48 cities,
           serving communities and the environment.
@@ -615,8 +935,8 @@ function HeroSection() {
         transition={{ delay: 1.2 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounceY"
       >
-        <span className="font-mono text-[#54ACBF] text-[9px] tracking-[3px] uppercase">Scroll</span>
-        <ChevronDown size={18} className="text-[#54ACBF]" />
+        <span className="font-mono text-[#CCFF00] text-[9px] tracking-[3px] uppercase">Scroll</span>
+        <ChevronDown size={18} className="text-[#CCFF00]" />
       </motion.div>
     </section>
   );
@@ -653,10 +973,10 @@ function MarqueeStrip() {
       <div className="marquee-track">
         {repeated.map((item, i) => (
           <span key={i} className="flex items-center">
-            <span className={`font-display font-black text-sm tracking-[3px] uppercase px-6 whitespace-nowrap transition-all duration-300 ${i % items.length === activePulse ? 'text-[#EAF7F9] drop-shadow-[0_0_10px_rgba(1,28,64,0.45)]' : 'text-[#011C40]'}`}>
+            <span className={`font-display font-black text-sm tracking-[3px] uppercase px-6 whitespace-nowrap transition-all duration-300 ${i % items.length === activePulse ? 'text-[#1A1A1A] drop-shadow-[0_0_10px_rgba(12,12,12,0.45)]' : 'text-[#0C0C0C]'}`}>
               {item}
             </span>
-            <span className="text-[#011C40]/40 text-lg">◆</span>
+            <span className="text-[#0C0C0C]/40 text-lg">◆</span>
           </span>
         ))}
       </div>
@@ -673,7 +993,7 @@ function StatsBand() {
   const miniContext = ['Updated in real time', 'Verified platform metrics'];
 
   return (
-    <section className="landing-surface-ocean border-y border-[rgba(84,172,191,0.12)] relative overflow-hidden">
+    <section className="landing-surface-ocean border-y border-[rgba(255,255,255,0.07)] relative overflow-hidden">
       <div className="absolute inset-0 stats-ambient-gradient pointer-events-none" aria-hidden="true" />
       <motion.div
         ref={ref}
@@ -703,20 +1023,20 @@ function StatsBand() {
             <div className="stats-card-glint" aria-hidden="true" />
             <div className="w-2 h-2 rounded-full bg-[#6EE07A] mx-auto mb-2 animate-pulse" />
             <div
-              className="font-display font-black text-[#A7EBF2] leading-none mb-2"
+              className="font-display font-black text-[#CCFF00] leading-none mb-2"
               style={{ fontSize: 'clamp(44px, 6vw, 72px)' }}
             >
               <AnimatedCounter target={stat.value} suffix={stat.suffix} />
             </div>
-            <div className="font-display font-bold text-[#54ACBF] text-xs tracking-[3px] uppercase">
+            <div className="font-display font-bold text-[#CCFF00] text-xs tracking-[3px] uppercase">
               {stat.label}
             </div>
-            <div className="h-1.5 mt-3 rounded-full bg-[rgba(84,172,191,0.12)] overflow-hidden">
+            <div className="h-1.5 mt-3 rounded-full bg-[rgba(255,255,255,0.07)] overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: accentWidths[index % accentWidths.length] }}
                 transition={{ duration: 1, delay: 0.25 + index * 0.08 }}
-                className="h-full rounded-full bg-gradient-to-r from-[#54ACBF] to-[#A7EBF2]"
+                className="h-full rounded-full bg-gradient-to-r from-[#CCFF00] to-[#BBEE00]"
               />
             </div>
           </motion.div>
@@ -762,13 +1082,13 @@ function AboutSplit() {
           <motion.div variants={fadeUp}>
             <span className="section-label">About Pruthwee</span>
             <h2
-              className="font-display font-black text-[#F0FAFB] uppercase leading-none mb-6"
+              className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none mb-6"
               style={{ fontSize: 'clamp(36px, 5vw, 60px)' }}
             >
               India's Volunteer{' '}
               <span className="luna-text-gradient">Platform</span>
             </h2>
-            <p className="font-sans text-[#8BBFCC] text-base leading-relaxed mb-8">
+            <p className="font-sans text-[#888888] text-base leading-relaxed mb-8">
               Pruthwe volunteers is India's most comprehensive volunteer management platform —
               built for India's unique context, culture, and scale.
             </p>
@@ -776,10 +1096,10 @@ function AboutSplit() {
             <ul className="space-y-3 mb-8">
               {points.map((pt) => (
                 <li key={pt} className="flex items-center gap-3">
-                  <span className="w-5 h-5 rounded-full bg-[rgba(84,172,191,0.15)] border border-[rgba(84,172,191,0.3)] flex items-center justify-center flex-shrink-0">
-                    <span className="text-[#54ACBF] text-xs">✓</span>
+                  <span className="w-5 h-5 rounded-full bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.15)] flex items-center justify-center flex-shrink-0">
+                    <span className="text-[#CCFF00] text-xs">✓</span>
                   </span>
-                  <span className="font-sans text-[#8BBFCC] text-sm">{pt}</span>
+                  <span className="font-sans text-[#888888] text-sm">{pt}</span>
                 </li>
               ))}
             </ul>
@@ -804,25 +1124,25 @@ function AboutSplit() {
                 alt="Pruthwe volunteers in action"
                 className="w-full h-full object-cover about-depth-image"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#011C40]/60 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0C0C0C]/60 to-transparent" />
 
               <div className="about-grid-overlay" />
 
               {/* Floating stat card */}
-              <div className="absolute bottom-4 left-4 right-4 bg-[rgba(1,28,64,0.85)] backdrop-blur-sm border border-[rgba(84,172,191,0.2)] rounded-xl p-4 flex items-center justify-between">
+              <div className="absolute bottom-4 left-4 right-4 bg-[rgba(12,12,12,0.85)] backdrop-blur-sm border border-[rgba(255,255,255,0.1)] rounded-xl p-4 flex items-center justify-between">
                 <div>
-                  <div className="font-display font-black text-[#A7EBF2] text-3xl leading-none">5L+</div>
-                  <div className="font-display font-bold text-[#54ACBF] text-xs tracking-[2px] uppercase mt-0.5">Hours Served</div>
+                  <div className="font-display font-black text-[#CCFF00] text-3xl leading-none">5L+</div>
+                  <div className="font-display font-bold text-[#CCFF00] text-xs tracking-[2px] uppercase mt-0.5">Hours Served</div>
                 </div>
-                <div className="h-10 w-px bg-[rgba(84,172,191,0.2)]" />
+                <div className="h-10 w-px bg-[rgba(204,255,0,0.2)]" />
                 <div>
-                  <div className="font-display font-black text-[#A7EBF2] text-3xl leading-none">48</div>
-                  <div className="font-display font-bold text-[#54ACBF] text-xs tracking-[2px] uppercase mt-0.5">Cities</div>
+                  <div className="font-display font-black text-[#CCFF00] text-3xl leading-none">48</div>
+                  <div className="font-display font-bold text-[#CCFF00] text-xs tracking-[2px] uppercase mt-0.5">Cities</div>
                 </div>
-                <div className="h-10 w-px bg-[rgba(84,172,191,0.2)]" />
+                <div className="h-10 w-px bg-[rgba(204,255,0,0.2)]" />
                 <div>
-                  <div className="font-display font-black text-[#A7EBF2] text-3xl leading-none">320+</div>
-                  <div className="font-display font-bold text-[#54ACBF] text-xs tracking-[2px] uppercase mt-0.5">Events</div>
+                  <div className="font-display font-black text-[#CCFF00] text-3xl leading-none">320+</div>
+                  <div className="font-display font-bold text-[#CCFF00] text-xs tracking-[2px] uppercase mt-0.5">Events</div>
                 </div>
               </div>
 
@@ -832,7 +1152,7 @@ function AboutSplit() {
             </div>
 
             {/* Decorative border */}
-            <div className="absolute -bottom-4 -right-4 w-full h-full border-2 border-[rgba(84,172,191,0.15)] rounded-2xl -z-10" />
+            <div className="absolute -bottom-4 -right-4 w-full h-full border-2 border-[rgba(255,255,255,0.08)] rounded-2xl -z-10" />
           </motion.div>
         </motion.div>
       </div>
@@ -853,7 +1173,7 @@ function ObjectivesGrid() {
           <motion.div variants={fadeUp} className="text-center mb-14">
             <span className="section-label">Platform Objectives</span>
             <h2
-              className="font-display font-black text-[#F0FAFB] uppercase leading-none"
+              className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none"
               style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
             >
               What We're Building
@@ -866,17 +1186,17 @@ function ObjectivesGrid() {
                 key={obj.title}
                 variants={fadeUp}
                 whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                className="bg-[rgba(1,28,64,0.5)] border border-[rgba(84,172,191,0.12)] rounded-2xl p-6 hover:border-[rgba(84,172,191,0.35)] transition-all duration-250 group cursor-default"
+                className="bg-[rgba(12,12,12,0.5)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-6 hover:border-[rgba(204,255,0,0.35)] transition-all duration-250 group cursor-default"
               >
                 <div className="text-4xl mb-4">{obj.icon}</div>
-                <h3 className="font-display font-black text-[#F0FAFB] text-xl uppercase tracking-wide mb-2 no-caps group-hover:text-[#A7EBF2] transition-colors">
+                <h3 className="heading-gradient font-display font-black text-[#F2F2F2] text-xl uppercase tracking-wide mb-2 no-caps group-hover:text-[#CCFF00] transition-colors">
                   {obj.title}
                 </h3>
-                <p className="font-sans text-[#8BBFCC] text-sm leading-relaxed">
+                <p className="font-sans text-[#888888] text-sm leading-relaxed">
                   {obj.desc}
                 </p>
                 {/* Bottom accent */}
-                <div className="mt-5 h-0.5 bg-gradient-to-r from-[#54ACBF] to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+                <div className="mt-5 h-0.5 bg-gradient-to-r from-[#CCFF00] to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
               </motion.div>
             ))}
           </div>
@@ -904,7 +1224,7 @@ function EventsPreview() {
             <div>
               <span className="section-label">Upcoming Events</span>
               <h2
-                className="landing-title text-[#F0FAFB]"
+                className="heading-gradient landing-title text-[#F2F2F2]"
                 style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
               >
                 Find Your{' '}
@@ -964,7 +1284,7 @@ function EventPreviewCard({ ev }: { ev: PreviewEvent }) {
           onMouseLeave={() => setTilt({ x: 0, y: 0 })}
           className="block group"
         >
-          <div className="relative border border-[rgba(84,172,191,0.16)] rounded-2xl overflow-hidden hover:border-[rgba(84,172,191,0.46)] transition-all duration-250 hover:shadow-card event-card-shell">
+          <div className="relative border border-[rgba(204,255,0,0.16)] rounded-2xl overflow-hidden hover:border-[rgba(204,255,0,0.46)] transition-all duration-250 hover:shadow-card event-card-shell">
             <div className="event-card-glint" aria-hidden="true" />
 
             {/* Image */}
@@ -974,18 +1294,18 @@ function EventPreviewCard({ ev }: { ev: PreviewEvent }) {
                 alt={ev.title}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#023859] via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent" />
 
               <div className="absolute top-3 left-3 flex items-center gap-2">
                 <span className="badge badge-teal">{ev.category}</span>
-                <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-[rgba(1,28,64,0.7)] border border-[rgba(84,172,191,0.22)]">
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-[rgba(12,12,12,0.7)] border border-[rgba(204,255,0,0.22)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#6EE07A] animate-pulse" />
-                  <span className="font-mono text-[9px] tracking-[1.2px] uppercase text-[#A7EBF2]">Live</span>
+                  <span className="font-mono text-[9px] tracking-[1.2px] uppercase text-[#CCFF00]">Live</span>
                 </span>
               </div>
 
-              <div className="absolute top-3 right-3 bg-[rgba(1,28,64,0.85)] backdrop-blur-sm border border-[rgba(84,172,191,0.2)] rounded-lg px-2 py-1">
-                <span className="font-display font-bold text-[#A7EBF2] text-xs tracking-wide uppercase">
+              <div className="absolute top-3 right-3 bg-[rgba(12,12,12,0.85)] backdrop-blur-sm border border-[rgba(255,255,255,0.1)] rounded-lg px-2 py-1">
+                <span className="font-display font-bold text-[#CCFF00] text-xs tracking-wide uppercase">
                   {ev.date}
                 </span>
               </div>
@@ -993,31 +1313,31 @@ function EventPreviewCard({ ev }: { ev: PreviewEvent }) {
 
             {/* Content */}
             <div className="p-5">
-              <h3 className="font-display font-black text-[#F0FAFB] text-lg uppercase leading-tight tracking-wide mb-3 group-hover:text-[#A7EBF2] transition-colors">
+              <h3 className="heading-gradient font-display font-black text-[#F2F2F2] text-lg uppercase leading-tight tracking-wide mb-3 group-hover:text-[#CCFF00] transition-colors">
                 {ev.title}
               </h3>
 
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5 text-[#8BBFCC] text-sm">
-                  <MapPin size={13} className="text-[#54ACBF]" />
+                <div className="flex items-center gap-1.5 text-[#888888] text-sm">
+                  <MapPin size={13} className="text-[#CCFF00]" />
                   <span className="font-sans">{ev.city}</span>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <Users size={13} className="text-[#54ACBF]" />
+                  <Users size={13} className="text-[#CCFF00]" />
                   <span className={`font-display font-bold text-sm tracking-wide uppercase ${seatColor(ev.seats)}`}>
                     {ev.seats} Seats Left
                   </span>
                 </div>
               </div>
 
-              <div className="h-1.5 rounded-full bg-[rgba(84,172,191,0.14)] overflow-hidden">
+              <div className="h-1.5 rounded-full bg-[rgba(204,255,0,0.14)] overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   whileInView={{ width: `${seatRatio}%` }}
                   viewport={{ once: true, amount: 0.65 }}
                   transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                  className="h-full rounded-full bg-gradient-to-r from-[#54ACBF] to-[#A7EBF2] event-seat-fill"
+                  className="h-full rounded-full bg-gradient-to-r from-[#CCFF00] to-[#BBEE00] event-seat-fill"
                 />
               </div>
             </div>
@@ -1041,13 +1361,13 @@ function TierSection() {
           <motion.div variants={fadeUp} className="text-center mb-14">
             <span className="section-label">Volunteer Status</span>
             <h2
-              className="font-display font-black text-[#F0FAFB] uppercase leading-none mb-4"
+              className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none mb-4"
               style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
             >
               Earn Your{' '}
-              <span className="text-[#54ACBF]">Badge</span>
+              <span className="text-[#CCFF00]">Badge</span>
             </h2>
-            <p className="font-sans text-[#8BBFCC] text-base max-w-xl mx-auto">
+            <p className="font-sans text-[#888888] text-base max-w-xl mx-auto">
               Every hour you volunteer counts. Climb from New Volunteer to Diamond Ambassador
               and unlock exclusive perks, recognition, and opportunities.
             </p>
@@ -1058,19 +1378,19 @@ function TierSection() {
             {STATUS_TIERS.map((tier) => (
               <div
                 key={tier.id}
-                className="flex-shrink-0 w-36 md:w-auto bg-[rgba(1,28,64,0.5)] border rounded-2xl p-4 text-center hover:scale-105 transition-transform duration-200 cursor-default"
+                className="flex-shrink-0 w-36 md:w-auto bg-[rgba(12,12,12,0.5)] border rounded-2xl p-4 text-center hover:scale-105 transition-transform duration-200 cursor-default"
                 style={{ borderColor: tier.borderColor }}
               >
                 <div className="text-3xl mb-2">{tier.icon}</div>
                 <div className="font-display font-black text-sm uppercase tracking-wide mb-1" style={{ color: tier.color }}>
                   {tier.label}
                 </div>
-                <div className="font-mono text-[#54ACBF] text-[10px] tracking-wide mb-3">
+                <div className="font-mono text-[#CCFF00] text-[10px] tracking-wide mb-3">
                   {tier.hoursMin === 0 && tier.id === 'none' ? '0h' : `${tier.hoursMin}h+`}
                 </div>
                 <ul className="space-y-1">
                   {tier.perks.slice(0, 2).map((perk, i) => (
-                    <li key={i} className="font-sans text-[#8BBFCC] text-[10px] leading-snug text-left">
+                    <li key={i} className="font-sans text-[#888888] text-[10px] leading-snug text-left">
                       · {perk}
                     </li>
                   ))}
@@ -1103,11 +1423,11 @@ function WhyJoinSection() {
           <motion.div variants={fadeUp} className="text-center mb-14">
             <span className="section-label">Why Volunteer With Us</span>
             <h2
-              className="font-display font-black text-[#F0FAFB] uppercase leading-none"
+              className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none"
               style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
             >
               4 Reasons to{' '}
-              <span className="text-[#54ACBF]">Join</span>
+              <span className="text-[#CCFF00]">Join</span>
             </h2>
           </motion.div>
 
@@ -1116,14 +1436,14 @@ function WhyJoinSection() {
               <motion.div
                 key={item.title}
                 variants={fadeUp}
-                className="flex items-start gap-5 bg-[rgba(2,56,89,0.4)] border border-[rgba(84,172,191,0.12)] rounded-2xl p-6 hover:border-[rgba(84,172,191,0.3)] transition-all duration-200 group"
+                className="flex items-start gap-5 bg-[rgba(20,20,20,0.4)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-6 hover:border-[rgba(255,255,255,0.15)] transition-all duration-200 group"
               >
                 <div className="text-4xl flex-shrink-0">{item.icon}</div>
                 <div>
-                  <h3 className="font-display font-black text-[#F0FAFB] text-xl uppercase tracking-wide mb-2 group-hover:text-[#A7EBF2] transition-colors">
+                  <h3 className="heading-gradient font-display font-black text-[#F2F2F2] text-xl uppercase tracking-wide mb-2 group-hover:text-[#CCFF00] transition-colors">
                     {item.title}
                   </h3>
-                  <p className="font-sans text-[#8BBFCC] text-sm leading-relaxed">{item.desc}</p>
+                  <p className="font-sans text-[#888888] text-sm leading-relaxed">{item.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -1132,15 +1452,15 @@ function WhyJoinSection() {
           {/* CTA band */}
           <motion.div
             variants={fadeUp}
-            className="text-center bg-gradient-to-r from-[#023859] via-[#26658C] to-[#023859] rounded-2xl p-10 border border-[rgba(84,172,191,0.2)]"
+            className="text-center bg-gradient-to-r from-[#141414] via-[#1A1A1A] to-[#141414] rounded-2xl p-10 border border-[rgba(255,255,255,0.1)]"
           >
             <h3
-              className="font-display font-black text-[#F0FAFB] uppercase leading-none mb-3"
+              className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none mb-3"
               style={{ fontSize: 'clamp(28px, 4vw, 48px)' }}
             >
               Ready to Make a Difference?
             </h3>
-            <p className="font-sans text-[#8BBFCC] mb-6 text-base">
+            <p className="font-sans text-[#888888] mb-6 text-base">
               Join 12,000+ volunteers. It's free. It's impactful. It's Pruthwee.
             </p>
             <button onClick={openRegisterModal} className="btn-primary text-base px-8 py-4">
@@ -1160,7 +1480,7 @@ function SummitBand({ countdown }: { countdown: { days: number; hours: number; m
   const { ref, controls } = useScrollReveal();
 
   return (
-    <section className="py-20 landing-surface-aurora border-y border-[rgba(84,172,191,0.15)] relative overflow-hidden">
+    <section className="py-20 landing-surface-aurora border-y border-[rgba(255,255,255,0.08)] relative overflow-hidden">
       <div className="absolute inset-0 grid-overlay opacity-40" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-5 md:px-10 text-center">
@@ -1168,13 +1488,13 @@ function SummitBand({ countdown }: { countdown: { days: number; hours: number; m
           <motion.div variants={fadeUp}>
             <span className="section-label">Flagship Event</span>
             <h2
-              className="font-display font-black text-[#F0FAFB] uppercase leading-none mb-2"
+              className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none mb-2"
               style={{ fontSize: 'clamp(40px, 7vw, 88px)' }}
             >
               Pruthwee Summit{' '}
-              <span className="text-[#54ACBF]">2026</span>
+              <span className="text-[#CCFF00]">2026</span>
             </h2>
-            <p className="font-display font-bold text-[#8BBFCC] text-lg uppercase tracking-[3px] mb-10">
+            <p className="font-display font-bold text-[#888888] text-lg uppercase tracking-[3px] mb-10">
               12–13 April · Gandhinagar, Gujarat
             </p>
           </motion.div>
@@ -1189,13 +1509,13 @@ function SummitBand({ countdown }: { countdown: { days: number; hours: number; m
             ].map(({ v, l }, i) => (
               <div key={l} className="flex items-center">
                 {i > 0 && (
-                  <span className="font-display font-black text-[#26658C] text-4xl md:text-6xl mx-2 md:mx-4">:</span>
+                  <span className="font-display font-black text-[#1A1A1A] text-4xl md:text-6xl mx-2 md:mx-4">:</span>
                 )}
                 <div className="text-center">
-                  <div className="font-display font-black text-[#A7EBF2] leading-none tabular-nums" style={{ fontSize: 'clamp(48px, 8vw, 96px)' }}>
+                  <div className="font-display font-black text-[#CCFF00] leading-none tabular-nums" style={{ fontSize: 'clamp(48px, 8vw, 96px)' }}>
                     {String(v).padStart(2, '0')}
                   </div>
-                  <div className="font-display font-bold text-[#54ACBF] text-xs tracking-[3px] uppercase mt-1">
+                  <div className="font-display font-bold text-[#CCFF00] text-xs tracking-[3px] uppercase mt-1">
                     {l}
                   </div>
                 </div>
@@ -1228,11 +1548,11 @@ function GallerySection() {
             <div>
               <span className="section-label">From The Field</span>
               <h2
-                className="font-display font-black text-[#F0FAFB] uppercase leading-none"
+                className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none"
                 style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
               >
                 Moments That{' '}
-                <span className="text-[#54ACBF]">Matter</span>
+                <span className="text-[#CCFF00]">Matter</span>
               </h2>
             </div>
             <Link to="/gallery" className="btn-outline inline-flex self-start md:self-auto">
@@ -1253,8 +1573,8 @@ function GallerySection() {
                   alt="Gallery"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#011C40]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-4">
-                  <span className="font-display font-bold text-[#A7EBF2] text-xs uppercase tracking-widest">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0C0C0C]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-4">
+                  <span className="font-display font-bold text-[#CCFF00] text-xs uppercase tracking-widest">
                     View Photo
                   </span>
                 </div>
@@ -1281,7 +1601,7 @@ function TestimonialsSection() {
           <motion.div variants={fadeUp} className="text-center mb-14">
             <span className="section-label">Volunteer Stories</span>
             <h2
-              className="landing-title text-[#F0FAFB]"
+              className="heading-gradient landing-title text-[#F2F2F2]"
               style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
             >
               Hear From Our{' '}
@@ -1300,21 +1620,21 @@ function TestimonialsSection() {
               >
                 <div className="testimonial-card-glint" aria-hidden="true" />
                 {/* Quote mark */}
-                <div className="font-display font-black text-[#54ACBF] text-6xl leading-none mb-3 opacity-40">"</div>
-                <p className="font-sans text-[#8BBFCC] text-sm leading-relaxed flex-1 mb-5">
+                <div className="font-display font-black text-[#CCFF00] text-6xl leading-none mb-3 opacity-40">"</div>
+                <p className="font-sans text-[#888888] text-sm leading-relaxed flex-1 mb-5">
                   {t.quote}
                 </p>
-                <div className="flex items-center gap-3 pt-4 border-t border-[rgba(84,172,191,0.12)]">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#54ACBF] to-[#26658C] flex items-center justify-center flex-shrink-0">
-                    <span className="font-display font-black text-[#011C40] text-sm">
+                <div className="flex items-center gap-3 pt-4 border-t border-[rgba(255,255,255,0.07)]">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#CCFF00] to-[#888800] flex items-center justify-center flex-shrink-0">
+                    <span className="font-display font-black text-[#0C0C0C] text-sm">
                       {t.name.charAt(0)}
                     </span>
                   </div>
                   <div>
-                    <div className="font-display font-black text-[#F0FAFB] text-sm uppercase tracking-wide">
+                    <div className="heading-gradient font-display font-black text-[#F2F2F2] text-sm uppercase tracking-wide">
                       {t.name}
                     </div>
-                    <div className="font-mono text-[#54ACBF] text-[10px] tracking-wider">
+                    <div className="font-mono text-[#CCFF00] text-[10px] tracking-wider">
                       {t.tier} · {t.city}
                     </div>
                   </div>
@@ -1348,18 +1668,18 @@ function EcosystemSection() {
             <div>
               <span className="section-label">India's Volunteer Ecosystem</span>
               <h2
-                className="font-display font-black text-[#F0FAFB] uppercase leading-none mb-6"
+                className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none mb-6"
                 style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
               >
                 Why India Needs{' '}
-                <span className="text-[#54ACBF]">Pruthwee</span>
+                <span className="text-[#CCFF00]">Pruthwee</span>
               </h2>
-              <p className="font-sans text-[#8BBFCC] text-base leading-relaxed mb-6">
+              <p className="font-sans text-[#888888] text-base leading-relaxed mb-6">
                 India has one of the world's largest populations willing to volunteer,
                 but lacks a structured, verified, digital platform to connect them with
                 meaningful opportunities. Pruthwe fills that gap at India's scale and diversity.
               </p>
-              <p className="font-sans text-[#8BBFCC] text-base leading-relaxed">
+              <p className="font-sans text-[#888888] text-base leading-relaxed">
                 We work with NGOs, corporates, and government bodies to create verified,
                 structured volunteer experiences that genuinely move the needle on
                 environmental and social impact.
@@ -1371,16 +1691,16 @@ function EcosystemSection() {
                 <motion.div
                   key={f.num}
                   variants={fadeUp}
-                  className="bg-[rgba(1,28,64,0.5)] border border-[rgba(84,172,191,0.12)] rounded-2xl p-5 flex items-center gap-5"
+                  className="bg-[rgba(12,12,12,0.5)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center gap-5"
                 >
-                  <div className="font-display font-black text-[#A7EBF2] text-4xl leading-none flex-shrink-0">
+                  <div className="font-display font-black text-[#CCFF00] text-4xl leading-none flex-shrink-0">
                     {f.num}
                   </div>
                   <div>
-                    <div className="font-display font-bold text-[#F0FAFB] text-base uppercase tracking-wide">
+                    <div className="font-display font-bold text-[#F2F2F2] text-base uppercase tracking-wide">
                       {f.label}
                     </div>
-                    <div className="font-mono text-[#54ACBF] text-xs tracking-wider mt-0.5">
+                    <div className="font-mono text-[#CCFF00] text-xs tracking-wider mt-0.5">
                       Source: {f.sub}
                     </div>
                   </div>
@@ -1419,13 +1739,13 @@ function NewsletterSection() {
           <motion.div variants={fadeUp} className="newsletter-shell">
             <span className="section-label">Stay Updated</span>
             <h2
-              className="landing-title text-[#F0FAFB] mb-4"
+              className="heading-gradient landing-title text-[#F2F2F2] mb-4"
               style={{ fontSize: 'clamp(32px, 4.5vw, 56px)' }}
             >
               Get Events in{' '}
               <span className="luna-text-gradient">Your Inbox</span>
             </h2>
-            <p className="font-sans text-[#8BBFCC] mb-8 text-base">
+            <p className="font-sans text-[#888888] mb-8 text-base">
               Monthly newsletter · New events first · No spam
             </p>
 
@@ -1461,7 +1781,7 @@ function NewsletterSection() {
                 </button>
               </form>
             )}
-            <p className="font-sans text-[#8BBFCC] text-xs mt-4">
+            <p className="font-sans text-[#888888] text-xs mt-4">
               By subscribing you agree to receive monthly updates. Unsubscribe anytime.
             </p>
           </motion.div>

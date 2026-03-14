@@ -39,7 +39,7 @@ const MOCK_EVENTS: OrgEvent[] = [
 
 const STATUS_META: Record<EventStatus, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   open:     { label: 'Open',     color: '#6EE07A', bg: 'rgba(110,224,122,0.1)',  border: 'rgba(110,224,122,0.3)',  icon: <CheckCircle size={11} /> },
-  upcoming: { label: 'Upcoming', color: '#A7EBF2', bg: 'rgba(167,235,242,0.1)', border: 'rgba(167,235,242,0.3)', icon: <Clock size={11} /> },
+  upcoming: { label: 'Upcoming', color: '#CCFF00', bg: 'rgba(204,255,0,0.1)', border: 'rgba(204,255,0,0.3)', icon: <Clock size={11} /> },
   draft:    { label: 'Draft',    color: '#FCD34D', bg: 'rgba(252,211,77,0.1)',   border: 'rgba(252,211,77,0.3)',   icon: <Edit2 size={11} /> },
   full:     { label: 'Full',     color: '#F97316', bg: 'rgba(249,115,22,0.1)',   border: 'rgba(249,115,22,0.3)',   icon: <AlertCircle size={11} /> },
   closed:   { label: 'Closed',   color: '#9CA3AF', bg: 'rgba(156,163,175,0.1)', border: 'rgba(156,163,175,0.3)', icon: <Archive size={11} /> },
@@ -52,15 +52,15 @@ const FILTER_TABS: { id: EventStatus | 'all'; label: string }[] = [
 
 function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; color: string }) {
   return (
-    <div className="bg-[#023859] border border-[rgba(84,172,191,0.1)] rounded-2xl p-5">
+    <div className="bg-[#141414] border border-[rgba(204,255,0,0.1)] rounded-2xl p-5">
       <div className="flex items-start justify-between mb-3">
-        <span className="font-mono text-[#8BBFCC] text-[10px] uppercase tracking-[2px]">{label}</span>
+        <span className="font-mono text-[#888888] text-[10px] uppercase tracking-[2px]">{label}</span>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}20` }}>
           <span style={{ color }}>{icon}</span>
         </div>
       </div>
-      <p className="font-display font-black text-[#F0FAFB] leading-none mb-1" style={{ fontSize: 'clamp(26px,3vw,36px)' }}>{value}</p>
-      {sub && <p className="font-sans text-[#8BBFCC] text-xs">{sub}</p>}
+      <p className="heading-gradient font-display font-black text-[#F2F2F2] leading-none mb-1" style={{ fontSize: 'clamp(26px,3vw,36px)' }}>{value}</p>
+      {sub && <p className="font-sans text-[#888888] text-xs">{sub}</p>}
     </div>
   );
 }
@@ -70,10 +70,10 @@ function EventCard({ event }: { event: OrgEvent }) {
   const fillPct = Math.min(Math.round((event.regCount / Math.max(event.maxSeats,1)) * 100), 100);
   const fillColor = fillPct >= 90 ? '#F97316' : fillPct >= 60 ? '#FCD34D' : '#6EE07A';
   return (
-    <div className="bg-[#023859] border border-[rgba(84,172,191,0.1)] rounded-2xl overflow-hidden hover:border-[rgba(84,172,191,0.28)] transition-all group">
+    <div className="bg-[#141414] border border-[rgba(204,255,0,0.1)] rounded-2xl overflow-hidden hover:border-[rgba(204,255,0,0.28)] transition-all group">
       <div className="relative h-36 overflow-hidden">
         <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#011C40] via-[#011C4060] to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0C0C0C] via-[#0C0C0C60] to-transparent" />
         <div className="absolute top-3 left-3">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border font-display font-bold text-[10px] uppercase tracking-wide"
             style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}>
@@ -90,20 +90,20 @@ function EventCard({ event }: { event: OrgEvent }) {
       </div>
       <div className="p-4 space-y-3">
         <div>
-          <p className="font-mono text-[#54ACBF] text-[10px] uppercase tracking-[2px] mb-1">{event.category}</p>
-          <h3 className="font-display font-black text-[#F0FAFB] text-sm uppercase tracking-wide leading-tight line-clamp-2">{event.title}</h3>
+          <p className="font-mono text-[#CCFF00] text-[10px] uppercase tracking-[2px] mb-1">{event.category}</p>
+          <h3 className="heading-gradient font-display font-black text-[#F2F2F2] text-sm uppercase tracking-wide leading-tight line-clamp-2">{event.title}</h3>
         </div>
-        <div className="flex items-center gap-3 text-[#8BBFCC]">
+        <div className="flex items-center gap-3 text-[#888888]">
           <span className="flex items-center gap-1 text-xs"><Calendar size={11} />{event.date}</span>
           <span className="flex items-center gap-1 text-xs"><MapPin size={11} />{event.city}</span>
         </div>
         {event.status !== 'draft' && (
           <div>
             <div className="flex justify-between mb-1">
-              <span className="font-mono text-[#8BBFCC] text-[10px]">{event.regCount} / {event.maxSeats} registered</span>
+              <span className="font-mono text-[#888888] text-[10px]">{event.regCount} / {event.maxSeats} registered</span>
               <span className="font-mono text-[10px]" style={{ color: fillColor }}>{fillPct}%</span>
             </div>
-            <div className="h-1.5 bg-[rgba(84,172,191,0.1)] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${fillPct}%`, background: fillColor }} />
             </div>
           </div>
@@ -111,10 +111,10 @@ function EventCard({ event }: { event: OrgEvent }) {
         <div className="flex gap-2 pt-1">
           {(event.status === 'open' || event.status === 'upcoming' || event.status === 'full') ? (
             <>
-              <Link to={`/organiser/events/${event.id}/registrations`} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-[rgba(84,172,191,0.1)] border border-[rgba(84,172,191,0.2)] text-[#54ACBF] hover:bg-[rgba(84,172,191,0.18)] transition-colors font-display font-bold text-[10px] uppercase tracking-wide">
+              <Link to={`/organiser/events/${event.id}/registrations`} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] text-[#CCFF00] hover:bg-[rgba(204,255,0,0.18)] transition-colors font-display font-bold text-[10px] uppercase tracking-wide">
                 <Users size={11} /> Registrations
               </Link>
-              <Link to={`/organiser/events/${event.id}/sectors`} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-[rgba(84,172,191,0.07)] border border-[rgba(84,172,191,0.12)] text-[#8BBFCC] hover:text-[#F0FAFB] hover:border-[rgba(84,172,191,0.3)] transition-colors font-display font-bold text-[10px] uppercase tracking-wide">
+              <Link to={`/organiser/events/${event.id}/sectors`} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-[rgba(204,255,0,0.07)] border border-[rgba(255,255,255,0.07)] text-[#888888] hover:text-[#F2F2F2] hover:border-[rgba(255,255,255,0.15)] transition-colors font-display font-bold text-[10px] uppercase tracking-wide">
                 <Zap size={11} /> Manage
               </Link>
             </>
@@ -123,7 +123,7 @@ function EventCard({ event }: { event: OrgEvent }) {
               <Edit2 size={11} /> Continue Setup
             </Link>
           ) : (
-            <Link to={`/organiser/events/${event.id}/close`} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-[rgba(84,172,191,0.06)] border border-[rgba(84,172,191,0.1)] text-[#8BBFCC] hover:text-[#F0FAFB] transition-colors font-display font-bold text-[10px] uppercase tracking-wide">
+            <Link to={`/organiser/events/${event.id}/close`} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(204,255,0,0.1)] text-[#888888] hover:text-[#F2F2F2] transition-colors font-display font-bold text-[10px] uppercase tracking-wide">
               <Eye size={11} /> View Summary
             </Link>
           )}
@@ -146,14 +146,14 @@ export default function OrgDashboardPage() {
   const fillRate     = totalSeats > 0 ? Math.round((totalRegs / totalSeats) * 100) : 0;
 
   return (
-    <div className="bg-[#011C40] min-h-screen">
-      <div className="bg-[#02294D] border-b border-[rgba(84,172,191,0.1)]">
+    <div className="bg-[#0C0C0C] min-h-screen">
+      <div className="bg-[#141414] border-b border-[rgba(204,255,0,0.1)]">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="font-mono text-[#54ACBF] text-[10px] uppercase tracking-[2px] mb-1">Organiser Portal</p>
-              <h1 className="font-display font-black text-[#F0FAFB] uppercase leading-none" style={{ fontSize: 'clamp(22px,3vw,36px)' }}>{orgName}</h1>
-              <p className="font-sans text-[#8BBFCC] text-sm mt-1">Manage your events and volunteer workforce</p>
+              <p className="font-mono text-[#CCFF00] text-[10px] uppercase tracking-[2px] mb-1">Organiser Portal</p>
+              <h1 className="heading-gradient font-display font-black text-[#F2F2F2] uppercase leading-none" style={{ fontSize: 'clamp(22px,3vw,36px)' }}>{orgName}</h1>
+              <p className="font-sans text-[#888888] text-sm mt-1">Manage your events and volunteer workforce</p>
             </div>
             <button onClick={() => navigate('/organiser/events/create')} className="btn-primary inline-flex items-center gap-2 self-start sm:self-auto">
               <Plus size={16} /> Create Event
@@ -165,9 +165,9 @@ export default function OrgDashboardPage() {
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 space-y-8">
         <SR>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={<Calendar size={16} />}    label="Active Events"  value={openEvents}     sub={`${MOCK_EVENTS.length} total`}   color="#54ACBF" />
+            <StatCard icon={<Calendar size={16} />}    label="Active Events"  value={openEvents}     sub={`${MOCK_EVENTS.length} total`}   color="#CCFF00" />
             <StatCard icon={<Users size={16} />}       label="Registrations"  value={totalRegs}      sub="across all events"               color="#6EE07A" />
-            <StatCard icon={<TrendingUp size={16} />}  label="Fill Rate"      value={`${fillRate}%`} sub={`${totalSeats} total seats`}     color="#A7EBF2" />
+            <StatCard icon={<TrendingUp size={16} />}  label="Fill Rate"      value={`${fillRate}%`} sub={`${totalSeats} total seats`}     color="#CCFF00" />
             <StatCard icon={<AlertCircle size={16} />} label="Pending Review" value={totalPending}   sub="awaiting decision"               color="#FCD34D" />
           </div>
         </SR>
@@ -178,8 +178,8 @@ export default function OrgDashboardPage() {
               <button key={tab.id} onClick={() => setFilter(tab.id as EventStatus | 'all')}
                 className={`flex-shrink-0 px-4 py-2 rounded-xl border font-display font-bold text-xs uppercase tracking-wide transition-all ${
                   filter === tab.id
-                    ? 'bg-[rgba(84,172,191,0.15)] border-[#54ACBF] text-[#A7EBF2]'
-                    : 'border-[rgba(84,172,191,0.12)] text-[#8BBFCC] hover:border-[rgba(84,172,191,0.3)] hover:text-[#F0FAFB]'
+                    ? 'bg-[rgba(255,255,255,0.08)] border-[#CCFF00] text-[#CCFF00]'
+                    : 'border-[rgba(255,255,255,0.07)] text-[#888888] hover:border-[rgba(255,255,255,0.15)] hover:text-[#F2F2F2]'
                 }`}>
                 {tab.label}
                 <span className="ml-1.5 font-mono text-[10px] opacity-60">
@@ -192,9 +192,9 @@ export default function OrgDashboardPage() {
 
         <SR delay={0.1}>
           {filtered.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-[rgba(84,172,191,0.15)] rounded-2xl">
-              <Calendar size={32} className="text-[#54ACBF] mx-auto mb-3 opacity-50" />
-              <p className="font-display font-bold text-[#8BBFCC] text-sm uppercase tracking-wide">No events in this category</p>
+            <div className="text-center py-20 border border-dashed border-[rgba(255,255,255,0.08)] rounded-2xl">
+              <Calendar size={32} className="text-[#CCFF00] mx-auto mb-3 opacity-50" />
+              <p className="font-display font-bold text-[#888888] text-sm uppercase tracking-wide">No events in this category</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -205,13 +205,13 @@ export default function OrgDashboardPage() {
               ))}
               {(filter === 'all' || filter === 'draft') && (
                 <button onClick={() => navigate('/organiser/events/create')}
-                  className="border-2 border-dashed border-[rgba(84,172,191,0.15)] rounded-2xl flex flex-col items-center justify-center gap-3 py-16 hover:border-[rgba(84,172,191,0.35)] hover:bg-[rgba(84,172,191,0.03)] transition-all group min-h-[280px]">
-                  <div className="w-12 h-12 rounded-xl bg-[rgba(84,172,191,0.08)] border border-[rgba(84,172,191,0.2)] flex items-center justify-center group-hover:bg-[rgba(84,172,191,0.14)] transition-colors">
-                    <Plus size={20} className="text-[#54ACBF]" />
+                  className="border-2 border-dashed border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col items-center justify-center gap-3 py-16 hover:border-[rgba(204,255,0,0.35)] hover:bg-[rgba(204,255,0,0.03)] transition-all group min-h-[280px]">
+                  <div className="w-12 h-12 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] flex items-center justify-center group-hover:bg-[rgba(204,255,0,0.14)] transition-colors">
+                    <Plus size={20} className="text-[#CCFF00]" />
                   </div>
                   <div className="text-center">
-                    <p className="font-display font-bold text-[#8BBFCC] text-sm uppercase tracking-wide group-hover:text-[#F0FAFB] transition-colors">New Event</p>
-                    <p className="font-sans text-[#8BBFCC] text-xs mt-1 opacity-60">Start from scratch</p>
+                    <p className="font-display font-bold text-[#888888] text-sm uppercase tracking-wide group-hover:text-[#F2F2F2] transition-colors">New Event</p>
+                    <p className="font-sans text-[#888888] text-xs mt-1 opacity-60">Start from scratch</p>
                   </div>
                 </button>
               )}
@@ -220,25 +220,25 @@ export default function OrgDashboardPage() {
         </SR>
 
         <SR delay={0.15}>
-          <div className="bg-[#023859] border border-[rgba(84,172,191,0.1)] rounded-2xl p-6">
-            <p className="font-mono text-[#54ACBF] text-[10px] uppercase tracking-[2px] mb-4">Quick Actions</p>
+          <div className="bg-[#141414] border border-[rgba(204,255,0,0.1)] rounded-2xl p-6">
+            <p className="font-mono text-[#CCFF00] text-[10px] uppercase tracking-[2px] mb-4">Quick Actions</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: 'Review Pending',      icon: <AlertCircle size={16} />, to: '/organiser/events/e1/registrations', color: '#FCD34D', count: totalPending },
-                { label: 'Allocate Volunteers', icon: <Zap size={16} />,         to: '/organiser/events/e1/allocations',   color: '#A7EBF2', count: null },
+                { label: 'Allocate Volunteers', icon: <Zap size={16} />,         to: '/organiser/events/e1/allocations',   color: '#CCFF00', count: null },
                 { label: 'Send Message',        icon: <BarChart2 size={16} />,   to: '/organiser/events/e1/messages',      color: '#6EE07A', count: null },
                 { label: 'Close Event',         icon: <Archive size={16} />,     to: '/organiser/events/e1/close',         color: '#9CA3AF', count: null },
               ].map(action => (
                 <Link key={action.label} to={action.to}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-[rgba(84,172,191,0.1)] hover:border-[rgba(84,172,191,0.25)] hover:bg-[rgba(84,172,191,0.05)] transition-all group">
+                  className="flex items-center gap-3 p-3 rounded-xl border border-[rgba(204,255,0,0.1)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(204,255,0,0.05)] transition-all group">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${action.color}18` }}>
                     <span style={{ color: action.color }}>{action.icon}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-display font-bold text-[#8BBFCC] group-hover:text-[#F0FAFB] text-xs uppercase tracking-wide transition-colors truncate">{action.label}</p>
+                    <p className="font-display font-bold text-[#888888] group-hover:text-[#F2F2F2] text-xs uppercase tracking-wide transition-colors truncate">{action.label}</p>
                     {action.count !== null && action.count > 0 && <p className="font-mono text-[10px]" style={{ color: action.color }}>{action.count} items</p>}
                   </div>
-                  <ChevronRight size={12} className="text-[#54ACBF] ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  <ChevronRight size={12} className="text-[#CCFF00] ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                 </Link>
               ))}
             </div>

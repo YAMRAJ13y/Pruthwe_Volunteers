@@ -69,19 +69,19 @@ function SideNavLink({
       onClick={onClick}
       className={`group relative flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150 ${
         active
-          ? 'bg-[rgba(84,172,191,0.14)] text-[#A7EBF2]'
-          : 'text-[#8BBFCC] hover:bg-[rgba(84,172,191,0.07)] hover:text-[#F0FAFB]'
+          ? 'bg-[rgba(204,255,0,0.14)] text-[#CCFF00]'
+          : 'text-[#888888] hover:bg-[rgba(204,255,0,0.07)] hover:text-[#F2F2F2]'
       }`}
     >
       {/* Active left bar */}
       {active && (
         <motion.div
           layoutId="sidebar-active-bar"
-          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-[#54ACBF]"
+          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-[#CCFF00]"
           transition={{ type: 'spring', stiffness: 400, damping: 35 }}
         />
       )}
-      <span className={`flex-shrink-0 transition-colors ${active ? 'text-[#54ACBF]' : 'text-[#54ACBF] group-hover:text-[#A7EBF2]'}`}>
+      <span className={`flex-shrink-0 transition-colors ${active ? 'text-[#CCFF00]' : 'text-[#CCFF00] group-hover:text-[#CCFF00]'}`}>
         {icon}
       </span>
       <span className="font-display font-bold text-sm uppercase tracking-wide flex-1 leading-none">
@@ -105,14 +105,14 @@ function MobileTabLink({ href, icon, label, exact }: {
     <Link
       to={href}
       className={`flex flex-col items-center gap-0.5 px-3 py-2 flex-1 transition-all ${
-        active ? 'text-[#A7EBF2]' : 'text-[#54ACBF]'
+        active ? 'text-[#CCFF00]' : 'text-[#CCFF00]'
       }`}
     >
       <span className={`relative transition-all ${active ? 'scale-110' : ''}`}>
         {active && (
           <motion.span
             layoutId="mobile-active-dot"
-            className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#54ACBF]"
+            className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#CCFF00]"
           />
         )}
         {icon}
@@ -144,28 +144,28 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] bg-[#011C40]">
+    <div className="flex min-h-[calc(100vh-4rem)] bg-[#0C0C0C]">
 
       {/* ══════════════════════════════════════
           DESKTOP SIDEBAR (≥ lg)
       ══════════════════════════════════════ */}
-      <aside className="hidden lg:flex flex-col w-56 xl:w-60 flex-shrink-0 bg-[#02294D] border-r border-[rgba(84,172,191,0.1)] sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+      <aside className="hidden lg:flex flex-col w-56 xl:w-60 flex-shrink-0 bg-[#141414] border-r border-[rgba(204,255,0,0.1)] sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
 
         {/* ── VOLUNTEER CARD ── */}
-        <div className="p-4 border-b border-[rgba(84,172,191,0.1)]">
+        <div className="p-4 border-b border-[rgba(204,255,0,0.1)]">
           {/* Avatar + name */}
           <div className="flex items-center gap-3 mb-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center font-display font-black text-sm text-[#011C40] flex-shrink-0"
+              className="w-10 h-10 rounded-xl flex items-center justify-center font-display font-black text-sm text-[#0C0C0C] flex-shrink-0"
               style={{ background: `linear-gradient(135deg, ${tier.color}, ${tier.color}99)` }}
             >
               {initials}
             </div>
             <div className="min-w-0">
-              <p className="font-display font-black text-[#F0FAFB] text-sm uppercase tracking-wide truncate leading-none">
+              <p className="heading-gradient font-display font-black text-[#F2F2F2] text-sm uppercase tracking-wide truncate leading-none">
                 {firstName}
               </p>
-              <p className="font-sans text-[#8BBFCC] text-[11px] truncate mt-0.5">
+              <p className="font-sans text-[#888888] text-[11px] truncate mt-0.5">
                 {profile?.city ?? user?.email?.split('@')[0]}
               </p>
             </div>
@@ -192,17 +192,17 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
           {progress.remaining > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-[#8BBFCC] text-[10px] tracking-wide">
+                <span className="font-mono text-[#888888] text-[10px] tracking-wide">
                   Next: {progress.nextLabel}
                 </span>
                 <span className="font-mono text-[10px]" style={{ color: progress.nextColor }}>
                   {progress.remaining}h
                 </span>
               </div>
-              <div className="h-1 bg-[rgba(84,172,191,0.1)] rounded-full overflow-hidden">
+              <div className="h-1 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
-                  style={{ background: `linear-gradient(90deg, #54ACBF, ${progress.nextColor})` }}
+                  style={{ background: `linear-gradient(90deg, #CCFF00, ${progress.nextColor})` }}
                   initial={{ width: 0 }}
                   animate={{ width: `${progress.pct}%` }}
                   transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
@@ -214,20 +214,20 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
 
         {/* ── MQ SCORE CHIP ── */}
         {profile && (
-          <div className="px-4 py-3 border-b border-[rgba(84,172,191,0.07)]">
+          <div className="px-4 py-3 border-b border-[rgba(204,255,0,0.07)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <Zap size={12} className="text-[#54ACBF]" />
-                <span className="font-mono text-[#54ACBF] text-[10px] uppercase tracking-[2px]">
+                <Zap size={12} className="text-[#CCFF00]" />
+                <span className="font-mono text-[#CCFF00] text-[10px] uppercase tracking-[2px]">
                   MQ Score
                 </span>
               </div>
-              <span className="font-display font-black text-[#A7EBF2] text-base leading-none">
+              <span className="font-display font-black text-[#CCFF00] text-base leading-none">
                 {mqScore}
               </span>
             </div>
-            <div className="mt-1.5 h-1 bg-[rgba(84,172,191,0.1)] rounded-full overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#54ACBF] to-[#A7EBF2]" style={{ width: `${Math.min(mqScore, 100)}%` }} />
+            <div className="mt-1.5 h-1 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#CCFF00] to-[#BBEE00]" style={{ width: `${Math.min(mqScore, 100)}%` }} />
             </div>
           </div>
         )}
@@ -240,7 +240,7 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* ── BOTTOM ── */}
-        <div className="p-3 border-t border-[rgba(84,172,191,0.1)] space-y-0.5">
+        <div className="p-3 border-t border-[rgba(204,255,0,0.1)] space-y-0.5">
           {BOTTOM_ITEMS.map(item => (
             <SideNavLink key={item.href} {...item} exact={false} />
           ))}
@@ -259,30 +259,30 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
       ══════════════════════════════════════ */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Mobile: compact top identity bar */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-[#02294D] border-b border-[rgba(84,172,191,0.1)]">
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-[#141414] border-b border-[rgba(204,255,0,0.1)]">
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center font-display font-black text-xs text-[#011C40] flex-shrink-0"
+            className="w-7 h-7 rounded-lg flex items-center justify-center font-display font-black text-xs text-[#0C0C0C] flex-shrink-0"
             style={{ background: tier.color }}
           >
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-display font-black text-[#F0FAFB] text-sm uppercase tracking-wide truncate leading-none">
+            <p className="heading-gradient font-display font-black text-[#F2F2F2] text-sm uppercase tracking-wide truncate leading-none">
               {firstName}
             </p>
-            <p className="font-sans text-[#8BBFCC] text-[10px]">
+            <p className="font-sans text-[#888888] text-[10px]">
               {tier.icon} {tier.label} · {totalHours}h
             </p>
           </div>
           {/* Progress mini */}
           <div className="w-20 flex-shrink-0">
-            <div className="h-1 bg-[rgba(84,172,191,0.1)] rounded-full overflow-hidden">
+            <div className="h-1 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#54ACBF] to-[#A7EBF2]"
+                className="h-full rounded-full bg-gradient-to-r from-[#CCFF00] to-[#BBEE00]"
                 style={{ width: `${progress.pct}%` }}
               />
             </div>
-            <p className="font-mono text-[#54ACBF] text-[9px] text-right mt-0.5">
+            <p className="font-mono text-[#CCFF00] text-[9px] text-right mt-0.5">
               {progress.remaining > 0 ? `${progress.remaining}h to ${progress.nextLabel}` : 'Max tier'}
             </p>
           </div>
@@ -297,7 +297,7 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
       {/* ══════════════════════════════════════
           MOBILE BOTTOM TAB BAR (< lg)
       ══════════════════════════════════════ */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#02294D]/95 backdrop-blur-md border-t border-[rgba(84,172,191,0.15)] safe-area-pb">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#141414]/95 backdrop-blur-md border-t border-[rgba(255,255,255,0.08)] safe-area-pb">
         <div className="flex items-stretch">
           {NAV_ITEMS.map(item => (
             <MobileTabLink key={item.href} {...item} />
